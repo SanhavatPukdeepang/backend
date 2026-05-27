@@ -1,7 +1,6 @@
 import { Router } from "express";
-
 import { supabase } from "../../config/supabase.js";
-
+import ApiError from "../../utils/ApiError.js";
 
 // Supabase / PostgreSQL routes (/api/v2/users/pg)
 // Password is excluded from SELECT.
@@ -10,7 +9,7 @@ export const router = Router();
 
 const PG_SELECT = "id, username, email, role, created_at, updated_at";
 
-router.get("/pg", async (req, res) => {
+router.get("/pg", async (req, res, next) => {
   try {
     const { data, error } = await supabase.from("users").select(PG_SELECT);
 
@@ -18,18 +17,15 @@ router.get("/pg", async (req, res) => {
 
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return res.status(400).json({ success: false, error: error.message });
+    next(error);
   }
 });
 
-router.post("/pg", async (req, res) => {
+router.post("/pg", async (req, res, next) => {
   const { username, email, password, role } = req.body || {};
 
   if (!username || !email || !password) {
-    return res.status(400).json({
-      success: false,
-      error: "username, email, and password are required",
-    });
+    return next(new ApiError(400, "username, email, and password are required"));
   }
 
   try {
@@ -43,11 +39,11 @@ router.post("/pg", async (req, res) => {
 
     return res.status(201).json({ success: true, data });
   } catch (error) {
-    return res.status(400).json({ success: false, error: error.message });
+    next(error);
   }
 });
 
-router.put("/pg/:id", async (req, res) => {
+router.put("/pg/:id", async (req, res, next) => {
   const { username, email, password, role } = req.body || {};
   const updates = {};
 
@@ -57,10 +53,7 @@ router.put("/pg/:id", async (req, res) => {
   if (role !== undefined) updates.role = role;
 
   if (Object.keys(updates).length === 0) {
-    return res.status(400).json({
-      success: false,
-      error: "At least one field is required to update",
-    });
+    return next(new ApiError(400, "At least one field is required to update"));
   }
 
   try {
@@ -73,16 +66,16 @@ router.put("/pg/:id", async (req, res) => {
     if (error) throw error;
 
     if (!data || data.length === 0) {
-      return res.status(404).json({ success: false, error: "User not found" });
+      return next(new ApiError(404, "User not found"));
     }
 
     return res.status(200).json({ success: true, data: data[0] });
   } catch (error) {
-    return res.status(400).json({ success: false, error: error.message });
+    next(error);
   }
 });
 
-router.delete("/pg/:id", async (req, res) => {
+router.delete("/pg/:id", async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from("users")
@@ -93,11 +86,11 @@ router.delete("/pg/:id", async (req, res) => {
     if (error) throw error;
 
     if (!data || data.length === 0) {
-      return res.status(404).json({ success: false, error: "User not found" });
+      return next(new ApiError(404, "User not found"));
     }
 
     return res.status(200).json({ success: true, data: data[0] });
   } catch (error) {
-    return res.status(400).json({ success: false, error: error.message });
+    next(error);
   }
 });

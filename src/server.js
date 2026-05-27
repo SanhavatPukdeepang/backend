@@ -6,6 +6,7 @@ import { users } from "./fakeData/fakeUsers.js";
 import { router as apiRoutes } from "./routes/index.js";
 import { connectDB } from "./config/mongodb.js";
 import { limiter } from "./middlewares/rateLimiter.js";
+import errorHandler from "./middlewares/errorHandler.js";
 import helmet from "helmet";
 
 const app = express();
@@ -60,18 +61,7 @@ app.get("/", (req, res) => {
   </html>`);
 });
 
-// Centralized error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || "Internal Server Error!",
-    path: req.originalUrl,
-    method: req.method,
-    timestamp: new Date().toISOString(),
-    stack: err.stack,
-  });
-});
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3002;
 

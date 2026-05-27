@@ -6,9 +6,9 @@ POST http://localhost:3002/api/v2/users
 Content-Type: application/json
 
 {
-    "username": "Charlie72", 
+    "username": "sanhavat", 
     "role": "admin",
-    "email": "charlie72@example.com",
+    "email": "sanhavat@example.com",
     "password": "password123"
 }
 
@@ -17,8 +17,8 @@ PUT http://localhost:3002/api/v2/users/6a06ad3401facfee7966fc0f
 Content-Type: application/json
 
 {
-    "username": "Neeti3", 
-    "email": "charlie@example.com",
+    "username": "sanhavat", 
+    "email": "sanhavat@example.com",
     "password": "password123"
 }
 

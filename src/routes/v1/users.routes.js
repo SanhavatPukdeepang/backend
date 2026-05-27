@@ -1,17 +1,18 @@
 import { Router } from "express";
 import { users } from "../../fakeData/fakeUsers.js";
+import ApiError from "../../utils/ApiError.js";
 
 export const router = Router();
 
 router.get("/", (req, res) => {
-  res.json(users);
+  res.json({ success: true, data: users });
 });
 
-router.post("/", (req, res) => {
+router.post("/", (req, res, next) => {
   const { username, email } = req.body || {};
 
   if (!username || !email) {
-    return res.status(400).json({ error: "username and email are required" });
+    return next(new ApiError(400, "username and email are required"));
   }
 
   // Simple incremental string id based on current mock data
@@ -23,34 +24,34 @@ router.post("/", (req, res) => {
 
   users.push(newUser);
 
-  return res.status(201).json(newUser);
+  return res.status(201).json({ success: true, data: newUser });
 });
 
-router.put("/:id", (req, res) => {
+router.put("/:id", (req, res, next) => {
   const user = users.find((u) => u.id === req.params.id);
 
   if (!user) {
-    return res.status(404).json({ error: "User not found!" });
+    return next(new ApiError(404, "User not found!"));
   }
 
   const { username, email, password } = req.body;
 
   if (!username || !email || !password) {
-    return res
-      .status(400)
-      .json({ error: "username, email and password are required!" });
+    return next(new ApiError(400, "username, email and password are required!"));
   }
 
   user.username = username;
   user.email = email;
   user.password = password;
 
-  res.status(200).json(user);
+  res.status(200).json({ success: true, data: user });
 });
 
-router.delete("/:id", (req, res) => {
+router.delete("/:id", (req, res, next) => {
   const index = users.findIndex((u) => u.id === req.params.id);
-  if (index === -1) return res.status(404).json({ error: "User not found" });
+  if (index === -1) {
+    return next(new ApiError(404, "User not found"));
+  }
   const [deleted] = users.splice(index, 1);
-  res.json(deleted);
+  res.status(200).json({ success: true, data: deleted });
 });

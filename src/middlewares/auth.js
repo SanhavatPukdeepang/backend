@@ -1,13 +1,11 @@
 import jwt from "jsonwebtoken";
+import ApiError from "../utils/ApiError.js";
 
 export const authUser = async (req, res, next) => {
   let token = req.cookies.accessToken;
 
   if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: "Access denied. No token!",
-    });
+    return next(new ApiError(401, "Access denied. No token!"));
   }
 
   try {

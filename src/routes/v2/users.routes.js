@@ -11,6 +11,7 @@ import {
   askUsers,
 } from "../../modules/users/users.v2.controller.js";
 import { authUser } from "../../middlewares/auth.js";
+import ApiError from "../../utils/ApiError.js";
 
 export const router = Router();
 
@@ -33,25 +34,19 @@ router.post("/login", async (req, res, next) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Email and Password required!" });
+    return next(new ApiError(400, "Email and Password required!"));
   }
 
   try {
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User not found!" });
+      return next(new ApiError(400, "User not found!"));
     }
 
     const isMatched = await bcrypt.compare(password, user.password);
     if (!isMatched) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Incorrect password!" });
+      return next(new ApiError(400, "Incorrect password!"));
     }
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
@@ -90,10 +85,7 @@ router.get("/auth/me", authUser, async (req, res, next) => {
     const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "User not found!",
-      });
+      return next(new ApiError(401, "User not found!"));
     }
 
     return res.status(200).json({

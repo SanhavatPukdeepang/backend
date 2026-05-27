@@ -1,4 +1,5 @@
 import { User } from "./user.model.js";
+import ApiError from "../../utils/ApiError.js";
 
 import { queueEmbedUserById } from "./user.embedding.js";
 import { embedText, generateText } from "../../services/gemini.client.js";
@@ -22,7 +23,7 @@ export const getUsers = async (req, res, next) => {
 };
 
 export const createUser = async (req, res, next) => {
- const { username, email, password, role } = req.body || {};
+  const { username, email, password, role } = req.body || {};
 
   const trimmedUsername = String(username || "").trim();
   const trimmedEmail = String(email || "")
@@ -30,26 +31,15 @@ export const createUser = async (req, res, next) => {
     .toLowerCase();
 
   if (!trimmedUsername || !trimmedEmail || !password) {
-    const err = new Error("username, email, and password are required");
-    err.name = "ValidationError";
-    err.status = 400;
-    return next(err);
+    return next(new ApiError(400, "username, email, and password are required"));
   }
 
   if (!EMAIL_PATTERN.test(trimmedEmail)) {
-    const err = new Error("Invalid email format");
-    err.name = "ValidationError";
-    err.status = 400;
-    return next(err);
+    return next(new ApiError(400, "Invalid email format"));
   }
 
   if (password.length > PASSWORD_MAX) {
-    const err = new Error(
-      `password must not exceed ${PASSWORD_MAX} characters`,
-    );
-    err.name = "ValidationError";
-    err.status = 400;
-    return next(err);
+    return next(new ApiError(400, `password must not exceed ${PASSWORD_MAX} characters`));
   }
 
   try {
@@ -68,15 +58,9 @@ export const createUser = async (req, res, next) => {
     return res.status(201).json({ success: true, data: safe });
   } catch (err) {
     if (err.code === 11000) {
-      err.status = 409;
-      err.name = "DuplicateKeyError";
-      err.message = "Email already in use";
-      return next(err);
+      return next(new ApiError(409, "Email already in use"));
     }
-    err.status = 500;
-    err.name = err.name || "DatabaseError";
-    err.message = err.message || "Failed to create user";
-    return next(err);
+    next(err);
   }
 };
 
@@ -90,10 +74,7 @@ export const updateUser = async (req, res, next) => {
   if (role !== undefined) updates.role = role;
 
   if (Object.keys(updates).length === 0) {
-    return res.status(400).json({
-      success: false,
-      error: "At least one field is required to update",
-    });
+    return next(new ApiError(400, "At least one field is required to update"));
   }
 
   try {
@@ -103,14 +84,14 @@ export const updateUser = async (req, res, next) => {
     });
 
     if (!doc) {
-      return res.status(404).json({ success: false, error: "User not found" });
+      return next(new ApiError(404, "User not found"));
     }
 
-    return res.status(200).json({ success: true, data: doc });
+    const safe = doc.toObject();
+    delete safe.password;
+
+    return res.status(200).json({ success: true, data: safe });
   } catch (err) {
-    // console.log(err);
-    // return res.status(400).json({ success: false, error: err });
-    err.status = 400;
     next(err);
   }
 };
@@ -120,12 +101,11 @@ export const deleteUser = async (req, res, next) => {
     const doc = await User.findByIdAndDelete(req.params.id);
 
     if (!doc) {
-      return res.status(404).json({ success: false, error: "User not found" });
+      return next(new ApiError(404, "User not found"));
     }
 
     return res.status(200).json({ success: true, data: doc });
   } catch (err) {
-    // return res.status(400).json({ success: false, error: err });
     next(err);
   }
 };
@@ -136,10 +116,7 @@ export const askUsers = async (req, res, next) => {
   const trimmed = String(question || "").trim();
 
   if (!trimmed) {
-    const err = new Error("question is required");
-    err.name = "ValidationError";
-    err.status = 400;
-    return next(err);
+    return next(new ApiError(400, "question is required"));
   }
 
   const parsedTopK = Number.isFinite(topK) ? Math.floor(topK) : 5;
@@ -149,7 +126,7 @@ export const askUsers = async (req, res, next) => {
     const queryVector = await embedText({ text: trimmed });
 
     const indexName = "users_embedding_vector_index";
-    const numCandidates = Math.max(50, limit * 10); // wider net (numCandidates) → pick best limit results → use them as sources for the prompt.
+    const numCandidates = Math.max(50, limit * 10); // wider net (numCandidates) â†’ pick best limit results â†’ use them as sources for the prompt.
 
     const sources = await User.aggregate([
       {
@@ -172,7 +149,7 @@ export const askUsers = async (req, res, next) => {
         },
       },
     ]);
-    // the ? is a defensive technique to avoid runtime errors if any source is missing or malformed
+    
     const contextLines = sources.map((s, idx) => {
       const id = s?._id ? String(s._id) : "";
       const username = s?.username ? String(s.username) : "";
@@ -203,7 +180,6 @@ export const askUsers = async (req, res, next) => {
     try {
       answer = await generateText({ prompt });
     } catch (genErr) {
-      // Keep contract stable: return sources but answer stays null if generation fails.
       console.error("Gemini generation failed", {
         message: genErr?.message,
       });
@@ -219,10 +195,6 @@ export const askUsers = async (req, res, next) => {
       },
     });
   } catch (error) {
-    error.status = error.status || 500;
-    error.name = error.name || "DatabaseError";
-    error.message =
-      error.message || "Failed to run Atlas Vector Search for users";
-    return next(error);
+    next(error);
   }
 };
