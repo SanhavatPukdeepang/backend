@@ -5,9 +5,11 @@ import cookieParser from "cookie-parser";
 import { users } from "./fakeData/fakeUsers.js";
 import { router as apiRoutes } from "./routes/index.js";
 import { connectDB } from "./config/mongodb.js";
-import { connectSupabase } from "./config/supabase.js";
+import { limiter } from "./middlewares/rateLimiter.js";
+import helmet from "helmet";
 
 const app = express();
+app.use(helmet());
 
 const corsOptions = {
   origin: [
@@ -19,7 +21,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
+app.use(limiter);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -71,10 +73,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = 3002;
+const PORT = process.env.PORT || 3002;
 
 await connectDB();
-await connectSupabase();
 
 app.listen(PORT, () => {
   console.log(`Server running on PORT: ${PORT} 🟢`);

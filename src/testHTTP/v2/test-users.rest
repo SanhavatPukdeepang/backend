@@ -6,9 +6,9 @@ POST http://localhost:3002/api/v2/users
 Content-Type: application/json
 
 {
-    "username": "Charlie", 
+    "username": "Charlie72", 
     "role": "admin",
-    "email": "charlie7@example.com",
+    "email": "charlie72@example.com",
     "password": "password123"
 }
 
